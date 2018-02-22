@@ -1,0 +1,2622 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+  Licensed to the Apache Software Foundation (ASF) under one or more
+  contributor license agreements.  See the NOTICE file distributed with
+  this work for additional information regarding copyright ownership.
+  The ASF licenses this file to You under the Apache License, Version 2.0
+  (the "License"); you may not use this file except in compliance with
+  the License.  You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+                           http://www.springframework.org/schema/beans/spring-beans.xsd
+                           http://www.springframework.org/schema/util
+                           http://www.springframework.org/schema/util/spring-util.xsd
+                           ">
+    <!--
+        Alter configuration below as needed.
+    -->
+    
+    <bean class="org.springframework.jdbc.datasource.DriverManagerDataSource" id="ignitedbSource">
+        <property name="driverClassName" value="com.mysql.jdbc.Driver"></property>
+        <property name="url" value="jdbc:mysql://10.62.100.17:3306/ignitedb"></property>
+        <property name="username" value="root"></property>
+        <property name="password" value="admin123"></property>
+    </bean>
+    
+    <bean id="grid.cfg" class="org.apache.ignite.configuration.IgniteConfiguration">
+      <property name="igniteInstanceName" value="CataLogCluster"/>
+      
+      <!-- Enabling Apache Ignite native persistence. -->
+      <property name="dataStorageConfiguration">
+        <bean class="org.apache.ignite.configuration.DataStorageConfiguration">
+          <property name="defaultDataRegionConfiguration">
+            <bean class="org.apache.ignite.configuration.DataRegionConfiguration">
+              <property name="persistenceEnabled" value="true"/>
+              <property name="name" value="Default_Region"/>
+              <!-- Setting the size of the default region to 10GB. -->
+              <property name="maxSize" value="#{10L * 1024 * 1024 * 1024}"/>
+              <!-- Increasing the buffer size to 1 GB. -->
+              <property name="checkpointPageBufferSize" value="#{1L * 1024 * 1024 * 1024}"/>
+            </bean>
+          </property>
+          <!-- Changing WAL Mode. --> 
+          <property name="walMode" value="LOG_ONLY"/>
+        </bean>
+      </property>
+
+          
+           <!-- Enabling ODBC. -->
+          <!-- <property name="odbcConfiguration">
+              <bean class="org.apache.ignite.configuration.OdbcConfiguration">
+                  <property name="endpointAddress" value="10.62.100.17:11900..11910"/>
+                  <property name="maxOpenCursors" value="512"/>
+                  <property name="socketSendBufferSize" value="65536"/>
+                  <property name="socketReceiveBufferSize" value="131072"/>
+                  <property name="threadPoolSize" value="4"/>
+               </bean>
+          </property> -->
+
+          <!-- Enabling JDBC Thin -->
+          <property name="sqlConnectorConfiguration">
+              <bean class="org.apache.ignite.configuration.SqlConnectorConfiguration" >
+                <property name='host' value="10.62.100.17"/>
+                <property name='port' value='10800'/>
+                <property name='portRange' value='0'/>
+              </bean>
+          </property>
+
+
+      <!-- Explicitly enable peer class loading. Set to false     
+         to disable the feature.   
+      -->   
+      <!-- <property name="peerClassLoadingEnabled" value="true"/>  -->
+      <!-- Set deployment mode. --> 
+      <!-- <property name="deploymentMode" value="CONTINUOUS"/>  -->
+      <!-- Disable missed resources caching. -->  
+      <property name="peerClassLoadingMissedResourcesCacheSize" value="0"/>   
+      <!--Exclude force peer class loading of a class, 
+          even if exists locally.     
+      --> 
+      
+      <property name="cacheConfiguration">
+            <list>
+                
+                 <!-- CountryToSalesOrg -->
+                <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                    <property name='dataRegionName' value='Default_Region'/>
+                    <property name="name" value="CountryToSalesOrgCache"/>
+                    <property name="cacheMode" value="PARTITIONED"/>
+                    <property name="atomicityMode" value="TRANSACTIONAL"/>
+                    <property name="backups" value="0"/>
+                    <property name="rebalanceMode" value="SYNC"/>
+                    <property name="rebalanceBatchSize" value="#{2 * 1024 * 1024}"/>
+                    <property name="rebalanceThrottle" value="100"/>
+
+                    <property name="cacheStoreFactory">
+                        <bean class="org.apache.ignite.cache.store.jdbc.CacheJdbcPojoStoreFactory">
+                            <property name="dataSourceBean" value="ignitedbSource"/>
+                            <property name="dialect">
+                                <bean class="org.apache.ignite.cache.store.jdbc.dialect.MySQLDialect">
+                                </bean>
+                            </property>
+
+                            <property name="types">
+                                <list>       
+                                    <bean class="org.apache.ignite.cache.store.jdbc.JdbcType">
+                                        <property name="cacheName" value="CountryToSalesOrgCache"/>
+                                        <property name="keyType" value="java.lang.Long"/>
+                                        <property name="valueType" value="catalog.domain.lenovo.CountryToSalesOrg"/>
+                                        <property name="databaseSchema" value="ignitedb"/>
+                                        <property name="databaseTable" value="countrytosalesorg"/>
+
+                                        <property name="keyFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="id"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="id"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+
+                                        <property name="valueFields">
+                                            <list>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="country"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="country"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="activeBU"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="activebu"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="salesOrg"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="salesorg"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.CHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="timeZoneName"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="timezonename"/>
+                                                </bean>
+
+                                            </list>
+                                        </property>
+                                    </bean>
+                                </list>
+                            </property>
+                        </bean>
+                    </property>
+
+                    <property name="readThrough" value="true"/>
+                    <property name="writeThrough" value="true"/>
+
+                    <property name="queryEntities">
+                        <list>
+
+                            <bean class="org.apache.ignite.cache.QueryEntity">
+                                <property name="keyType" value="java.lang.Long"/>
+                                <property name="valueType" value="catalog.domain.lenovo.CountryToSalesOrg"/>
+                                <property name="keyFieldName" value="id"/>
+
+                                <property name="keyFields">
+                                    <list>
+                                        <value>id</value>
+                                    </list>
+                                </property>
+
+                                <property name="fields">
+                                    <map>
+                                        <entry key="id" value="java.lang.Long"/>
+                                        <entry key="country" value="java.lang.String"/>
+                                        <entry key="activebu" value="java.lang.String"/>
+                                        <entry key="salesorg" value="java.lang.String"/>
+                                        <entry key="timezonename" value="java.lang.String"/>
+                                    </map>
+                                </property>
+
+                            </bean>
+
+                        </list>
+                    </property>
+                </bean>
+                
+                <!-- LenovoSKUBasicInfo -->
+                <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                    <property name='dataRegionName' value='Default_Region'/>
+                    <property name="name" value="LenovoSKUBasicInfoCache"/>
+                    <property name="cacheMode" value="PARTITIONED"/>
+                    <property name="atomicityMode" value="TRANSACTIONAL"/>
+                    <property name="backups" value="0"/>
+                    <property name="rebalanceMode" value="SYNC"/>
+                    <property name="rebalanceBatchSize" value="#{2 * 1024 * 1024}"/>
+                    <property name="rebalanceThrottle" value="100"/>
+                    <property name="cacheStoreFactory">
+                        <bean class="org.apache.ignite.cache.store.jdbc.CacheJdbcPojoStoreFactory">
+                            <property name="dataSourceBean" value="ignitedbSource"/>
+                            <property name="dialect">
+                                <bean class="org.apache.ignite.cache.store.jdbc.dialect.MySQLDialect">
+                                </bean>
+                            </property>
+                            <property name="types">
+                                <list>
+                                    <bean class="org.apache.ignite.cache.store.jdbc.JdbcType">
+                                        <property name="cacheName" value="LenovoSKUBasicInfoCache"/>
+                                        <property name="keyType" value="java.lang.Long"/>
+                                        <property name="valueType" value="catalog.domain.lenovo.LenovoSKUBasicInfo"/>
+                                        <property name="databaseSchema" value="ignitedb"/>
+                                        <property name="databaseTable" value="lenovoskubasicinfo"/>
+
+                                        <property name="keyFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="id"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="id"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+
+                                        <property name="valueFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="lenovoSKUId"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="lenovoskuid"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="lenovoSKUDescription"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="lenovoskudescription"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="salesOrg"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="salesorg"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="rrModelId"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="rrmodelid"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="rrType"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="rrtype"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="BillingCycle"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="billingcycle"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="status"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="status"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="autoRenew"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="autorenew"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="partnerId"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="partnerid"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="partnerSKU"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="partnersku"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="basicSKU"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="basicsku"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="eccDummyPartId"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="eccdummypartid"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="revenueDefer"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="revenuedefer"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="costDefer"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="costdefer"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="lastModifyBy"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="lastmodifyby"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.TIMESTAMP"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="lastModidyAt"/>
+                                                    <constructor-arg value="java.sql.Timestamp"/>
+                                                    <constructor-arg value="lastmodidyat"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+                                    </bean>
+                                </list>
+                            </property>
+                        </bean>
+                    </property>
+                    <property name="readThrough" value="true"/>
+                    <property name="writeThrough" value="true"/>
+
+                    <property name="queryEntities">
+                        <list>
+                            <bean class="org.apache.ignite.cache.QueryEntity">
+                                <property name="keyType" value="java.lang.Long"/>
+                                <property name="valueType" value="catalog.domain.lenovo.LenovoSKUBasicInfo"/>
+                                <property name="keyFieldName" value="id"/>
+
+                                <property name="keyFields">
+                                    <list>
+                                        <value>id</value>
+                                    </list>
+                                </property>
+
+                                <property name="fields">
+                                    <map>
+                                        <entry key="lenovoskuid" value="java.lang.String"/>
+                                        <entry key="lenovoskudescription" value="java.lang.String"/>
+                                        <entry key="salesorg" value="java.lang.String"/>
+                                        <entry key="rrmodelid" value="java.lang.String"/>
+                                        <entry key="rrtype" value="java.lang.String"/>
+                                        <entry key="billingcycle" value="java.lang.String"/>
+                                        <entry key="status" value="java.lang.String"/>
+                                        <entry key="autorenew" value="java.lang.String"/>
+                                        <entry key="partnerid" value="java.lang.String"/>
+                                        <entry key="partnersku" value="java.lang.String"/>
+                                        <entry key="basicsku" value="java.lang.String"/>
+                                        <entry key="eccdummypartid" value="java.lang.String"/>
+                                        <entry key="revenuedefer" value="java.lang.String"/>
+                                        <entry key="costdefer" value="java.lang.String"/>
+                                        <entry key="lastmodifyby" value="java.lang.String"/>
+                                        <entry key="lastmodidyat" value="java.sql.Timestamp"/>
+                                        <entry key="id" value="java.lang.Long"/>
+                                    </map>
+                                </property>
+                            </bean>
+                        </list>
+                    </property>
+                </bean>
+
+                <!-- LenovoSKUMarketInfo -->
+                <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                    <property name='dataRegionName' value='Default_Region'/>
+                    <property name="name" value="LenovoSKUMarketInfoCache"/>
+                    <property name="cacheMode" value="PARTITIONED"/>
+                    <property name="atomicityMode" value="TRANSACTIONAL"/>
+                    <property name="backups" value="0"/>
+                    <property name="rebalanceMode" value="SYNC"/>
+                    <property name="rebalanceBatchSize" value="#{2 * 1024 * 1024}"/>
+                    <property name="rebalanceThrottle" value="100"/>
+                    <property name="cacheStoreFactory">
+                        <bean class="org.apache.ignite.cache.store.jdbc.CacheJdbcPojoStoreFactory">
+                            <property name="dataSourceBean" value="ignitedbSource"/>
+                            <property name="dialect">
+                                <bean class="org.apache.ignite.cache.store.jdbc.dialect.MySQLDialect">
+                                </bean>
+                            </property>
+                            <property name="types">
+                                <list>
+                                    <bean class="org.apache.ignite.cache.store.jdbc.JdbcType">
+                                        <property name="cacheName" value="LenovoSKUMarketInfoCache"/>
+                                        <property name="keyType" value="java.lang.Long"/>
+                                        <property name="valueType" value="catalog.domain.lenovo.LenovoSKUMarketInfo"/>
+                                        <property name="databaseSchema" value="ignitedb"/>
+                                        <property name="databaseTable" value="lenovoskumarketinfo"/>
+
+                                        <property name="keyFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="id"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="id"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+
+                                        <property name="valueFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="lenovoSKUId"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="lenovoskuid"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="Longdescription"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="longdescription"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="techSpec"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="techspec"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="image"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="image"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="audienceFlag1"/>
+                                                    <constructor-arg value="java.lang.Boolean"/>
+                                                    <constructor-arg value="audienceflag1"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="audienceFlag2"/>
+                                                    <constructor-arg value="java.lang.Boolean"/>
+                                                    <constructor-arg value="audienceflag2"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="audienceFlag3"/>
+                                                    <constructor-arg value="java.lang.Boolean"/>
+                                                    <constructor-arg value="audienceflag3"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="audienceFlag4"/>
+                                                    <constructor-arg value="java.lang.Boolean"/>
+                                                    <constructor-arg value="audienceflag4"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+                                    </bean>
+                                </list>
+                            </property>
+                        </bean>
+                    </property>
+
+                    <property name="readThrough" value="true"/>
+                    <property name="writeThrough" value="true"/>
+
+                    <property name="queryEntities">
+                        <list>
+                            <bean class="org.apache.ignite.cache.QueryEntity">
+                                <property name="keyType" value="java.lang.Long"/>
+                                <property name="valueType" value="catalog.domain.lenovo.LenovoSKUMarketInfo"/>
+                                <property name="keyFieldName" value="id"/>
+
+                                <property name="keyFields">
+                                    <list>
+                                        <value>id</value>
+                                    </list>
+                                </property>
+
+                                <property name="fields">
+                                    <map>
+                                        <entry key="lenovoskuid" value="java.lang.String"/>
+                                        <entry key="longdescription" value="java.lang.String"/>
+                                        <entry key="techspec" value="java.lang.String"/>
+                                        <entry key="image" value="java.lang.String"/>
+                                        <entry key="audienceflag1" value="java.lang.Boolean"/>
+                                        <entry key="audienceflag2" value="java.lang.Boolean"/>
+                                        <entry key="audienceflag3" value="java.lang.Boolean"/>
+                                        <entry key="audienceflag4" value="java.lang.Boolean"/>
+                                        <entry key="id" value="java.lang.Long"/>
+                                    </map>
+                                </property>
+                            </bean>
+                        </list>
+                    </property>
+                </bean>
+
+                <!-- LenovoSKUPrice -->
+                <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                    <property name='dataRegionName' value='Default_Region'/>
+                    <property name="name" value="LenovoSKUPriceCache"/>
+                    <property name="cacheMode" value="PARTITIONED"/>
+                    <property name="atomicityMode" value="TRANSACTIONAL"/>
+                    <property name="backups" value="0"/>
+                    <property name="rebalanceMode" value="SYNC"/>
+                    <property name="rebalanceBatchSize" value="#{2 * 1024 * 1024}"/>
+                    <property name="rebalanceThrottle" value="100"/>
+                    <property name="cacheStoreFactory">
+                        <bean class="org.apache.ignite.cache.store.jdbc.CacheJdbcPojoStoreFactory">
+                            <property name="dataSourceBean" value="ignitedbSource"/>
+                            <property name="dialect">
+                                <bean class="org.apache.ignite.cache.store.jdbc.dialect.MySQLDialect">
+                                </bean>
+                            </property>
+                            <property name="types">
+                                <list>
+                                    <bean class="org.apache.ignite.cache.store.jdbc.JdbcType">
+                                        <property name="cacheName" value="LenovoSKUPriceCache"/>
+                                        <property name="keyType" value="java.lang.Long"/>
+                                        <property name="valueType" value="catalog.domain.lenovo.LenovoSKUPrice"/>
+                                        <property name="databaseSchema" value="ignitedb"/>
+                                        <property name="databaseTable" value="lenovoskuprice"/>
+
+                                        <property name="keyFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="id"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="id"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+
+                                        <property name="valueFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="lenovoSKUId"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="lenovoskuid"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="salesOrg"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="salesorg"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="versionId"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="versionid"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="priceStatus"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="pricestatus"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.DECIMAL"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="cost"/>
+                                                    <constructor-arg value="java.math.BigDecimal"/>
+                                                    <constructor-arg value="cost"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.DECIMAL"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="mrsp"/>
+                                                    <constructor-arg value="java.math.BigDecimal"/>
+                                                    <constructor-arg value="mrsp"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.DECIMAL"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="lenovoPrice"/>
+                                                    <constructor-arg value="java.math.BigDecimal"/>
+                                                    <constructor-arg value="lenovoprice"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="priceUnit"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="priceunit"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="currency"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="currency"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.DECIMAL"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="basicPrice"/>
+                                                    <constructor-arg value="java.math.BigDecimal"/>
+                                                    <constructor-arg value="basicprice"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.DECIMAL"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="basicCost"/>
+                                                    <constructor-arg value="java.math.BigDecimal"/>
+                                                    <constructor-arg value="basiccost"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="lastModifyBy"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="lastmodifyby"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.TIMESTAMP"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="lastModifyAt"/>
+                                                    <constructor-arg value="java.sql.Timestamp"/>
+                                                    <constructor-arg value="lastmodifyat"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+                                    </bean>
+                                </list>
+                            </property>
+                        </bean>
+                    </property>
+
+                    <property name="readThrough" value="true"/>
+                    <property name="writeThrough" value="true"/>
+
+                    <property name="queryEntities">
+                        <list>
+                            <bean class="org.apache.ignite.cache.QueryEntity">
+                                <property name="keyType" value="java.lang.Long"/>
+                                <property name="valueType" value="catalog.domain.lenovo.LenovoSKUPrice"/>
+                                <property name="keyFieldName" value="id"/>
+
+                                <property name="keyFields">
+                                    <list>
+                                        <value>id</value>
+                                    </list>
+                                </property>
+
+                                <property name="fields">
+                                    <map>
+                                        <entry key="lenovoskuid" value="java.lang.String"/>
+                                        <entry key="salesorg" value="java.lang.String"/>
+                                        <entry key="versionid" value="java.lang.String"/>
+                                        <entry key="pricestatus" value="java.lang.String"/>
+                                        <entry key="cost" value="java.math.BigDecimal"/>
+                                        <entry key="mrsp" value="java.math.BigDecimal"/>
+                                        <entry key="lenovoprice" value="java.math.BigDecimal"/>
+                                        <entry key="priceunit" value="java.lang.String"/>
+                                        <entry key="currency" value="java.lang.String"/>
+                                        <entry key="basicprice" value="java.math.BigDecimal"/>
+                                        <entry key="basiccost" value="java.math.BigDecimal"/>
+                                        <entry key="lastmodifyby" value="java.lang.String"/>
+                                        <entry key="lastmodifyat" value="java.sql.Timestamp"/>
+                                        <entry key="id" value="java.lang.Long"/>
+                                    </map>
+                                </property>
+                            </bean>
+                        </list>
+                    </property>
+                </bean>
+
+                <!-- LenovoSKUAutoCreatedLogs -->
+                <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                    <property name='dataRegionName' value='Default_Region'/>
+                    <property name="name" value="LenovoSKUAutoCreatedLogsCache"/>
+                    <property name="cacheMode" value="PARTITIONED"/>
+                    <property name="atomicityMode" value="TRANSACTIONAL"/>
+                    <property name="backups" value="0"/>
+                    <property name="rebalanceMode" value="SYNC"/>
+                    <property name="rebalanceBatchSize" value="#{2 * 1024 * 1024}"/>
+                    <property name="rebalanceThrottle" value="100"/>
+                    <property name="cacheStoreFactory">
+                        <bean class="org.apache.ignite.cache.store.jdbc.CacheJdbcPojoStoreFactory">
+                            <property name="dataSourceBean" value="ignitedbSource"/>
+                            <property name="dialect">
+                                <bean class="org.apache.ignite.cache.store.jdbc.dialect.MySQLDialect">
+                                </bean>
+                            </property>
+
+                            <property name="types">
+                                <list>
+                                    <bean class="org.apache.ignite.cache.store.jdbc.JdbcType">
+                                        <property name="cacheName" value="LenovoSKUAutoCreatedLogsCache"/>
+                                        <property name="keyType" value="java.lang.Long"/>
+                                        <property name="valueType" value="catalog.domain.lenovo.LenovoSKUAutoCreatedLogs"/>
+                                        <property name="databaseSchema" value="ignitedb"/>
+                                        <property name="databaseTable" value="lenovoskuautocreatedlogs"/>
+
+                                        <property name="keyFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="id"/>
+                                                    <constructor-arg value="java.lang.Long"/>
+                                                    <constructor-arg value="id"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+
+                                        <property name="valueFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="batchId"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="batchid"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="partnerId"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="partnerid"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="country"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="country"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.TIMESTAMP"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="dateCreated"/>
+                                                    <constructor-arg value="java.sql.Timestamp"/>
+                                                    <constructor-arg value="datecreated"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.INTEGER"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="SKUsCreated"/>
+                                                    <constructor-arg value="java.lang.Integer"/>
+                                                    <constructor-arg value="skuscreated"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="status"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="status"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+                                    </bean>
+                                </list>
+                            </property>
+                        </bean>
+                    </property>
+
+                    <property name="readThrough" value="true"/>
+                    <property name="writeThrough" value="true"/>
+
+                    <property name="queryEntities">
+                        <list>
+                            <bean class="org.apache.ignite.cache.QueryEntity">
+                                <property name="keyType" value="java.lang.Long"/>
+                                <property name="valueType" value="catalog.domain.lenovo.LenovoSKUAutoCreatedLogs"/>
+                                <property name="keyFieldName" value="id"/>
+
+                                <property name="keyFields">
+                                    <list>
+                                        <value>id</value>
+                                    </list>
+                                </property>
+
+                                <property name="fields">
+                                    <map>
+                                        <entry key="id" value="java.lang.Long"/>
+                                        <entry key="partnerid" value="java.lang.String"/>
+                                        <entry key="country" value="java.lang.String"/>
+                                        <entry key="datecreated" value="java.sql.Timestamp"/>
+                                        <entry key="skuscreated" value="java.lang.Integer"/>
+                                        <entry key="status" value="java.lang.String"/>
+                                        <entry key="batchid" value="java.lang.String"/>
+                                    </map>
+                                </property>
+                            </bean>
+                        </list>
+                    </property>
+                </bean>
+
+                <!-- Partner -->
+                <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                    <property name='dataRegionName' value='Default_Region'/>
+                    <property name="name" value="PartnerCache"/>
+                    <property name="cacheMode" value="PARTITIONED"/>
+                    <property name="atomicityMode" value="TRANSACTIONAL"/>
+                    <property name="backups" value="0"/>
+                    <property name="rebalanceMode" value="SYNC"/>
+                    <property name="rebalanceBatchSize" value="#{2 * 1024 * 1024}"/>
+                    <property name="rebalanceThrottle" value="100"/>
+                    <property name="cacheStoreFactory">
+                        <bean class="org.apache.ignite.cache.store.jdbc.CacheJdbcPojoStoreFactory">
+                            <property name="dataSourceBean" value="ignitedbSource"/>
+                            <property name="dialect">
+                                <bean class="org.apache.ignite.cache.store.jdbc.dialect.MySQLDialect">
+                                </bean>
+                            </property>
+                            <property name="types">
+                                <list>
+                                    <bean class="org.apache.ignite.cache.store.jdbc.JdbcType">
+                                        <property name="cacheName" value="PartnerCache"/>
+                                        <property name="keyType" value="java.lang.Long"/>
+                                        <property name="valueType" value="catalog.domain.partner.Partner"/>
+                                        <property name="databaseSchema" value="ignitedb"/>
+                                        <property name="databaseTable" value="partner"/>
+
+                                        <property name="keyFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="id"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="id"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+
+                                        <property name="valueFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="partnerId"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="partnerid"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="partnerName"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="partnername"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="status"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="status"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="autoConvertRRType"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="autoconvertrrtype"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="partnerConnectionInformation"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="partnerconnectioninformation"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="updateBy"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="updateby"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.TIMESTAMP"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="updateAt"/>
+                                                    <constructor-arg value="java.sql.Timestamp"/>
+                                                    <constructor-arg value="updateat"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+                                    </bean>
+                                </list>
+                            </property>
+                        </bean>
+                    </property>
+
+                    <property name="readThrough" value="true"/>
+                    <property name="writeThrough" value="true"/>
+
+                    <property name="queryEntities">
+                        <list>
+                            <bean class="org.apache.ignite.cache.QueryEntity">
+                                <property name="keyType" value="java.lang.Long"/>
+                                <property name="valueType" value="catalog.domain.partner.Partner"/>
+                                <property name="keyFieldName" value="id"/>
+
+                                <property name="keyFields">
+                                    <list>
+                                        <value>id</value>
+                                    </list>
+                                </property>
+
+                                <property name="fields">
+                                    <map>
+                                        <entry key="partnerid" value="java.lang.String"/>
+                                        <entry key="partnername" value="java.lang.String"/>
+                                        <entry key="status" value="java.lang.String"/>
+                                        <entry key="autoconvertrrtype" value="java.lang.String"/>
+                                        <entry key="partnerconnectioninformation" value="java.lang.String"/>
+                                        <entry key="updateby" value="java.lang.String"/>
+                                        <entry key="updateat" value="java.sql.Timestamp"/>
+                                        <entry key="id" value="java.lang.Long"/>
+                                    </map>
+                                </property>
+                            </bean>
+                        </list>
+                    </property>
+                </bean>
+
+                <!-- PartnerSKUBasicInfo -->
+                <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                    <property name='dataRegionName' value='Default_Region'/>
+                    <property name="name" value="PartnerSKUBasicInfoCache"/>
+                    <property name="cacheMode" value="PARTITIONED"/>
+                    <property name="atomicityMode" value="TRANSACTIONAL"/>
+                    <property name="backups" value="0"/>
+                    <property name="rebalanceMode" value="SYNC"/>
+                    <property name="rebalanceBatchSize" value="#{2 * 1024 * 1024}"/>
+                    <property name="rebalanceThrottle" value="100"/>
+                    <property name="cacheStoreFactory">
+                        <bean class="org.apache.ignite.cache.store.jdbc.CacheJdbcPojoStoreFactory">
+                            <property name="dataSourceBean" value="ignitedbSource"/>
+                            <property name="dialect">
+                                <bean class="org.apache.ignite.cache.store.jdbc.dialect.MySQLDialect">
+                                </bean>
+                            </property>
+                            <property name="types">
+                                <list>
+                                    <bean class="org.apache.ignite.cache.store.jdbc.JdbcType">
+                                        <property name="cacheName" value="PartnerSKUBasicInfoCache"/>
+                                        <property name="keyType" value="java.lang.Long"/>
+                                        <property name="valueType" value="catalog.domain.partner.PartnerSKUBasicInfo"/>
+                                        <property name="databaseSchema" value="ignitedb"/>
+                                        <property name="databaseTable" value="partnerskubasicinfo"/>
+
+                                        <property name="keyFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="id"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="id"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+
+                                        <property name="valueFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="partnerSKU"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="partnersku"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="partnerId"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="partnerid"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="country"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="country"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="locale"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="locale"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="rrType"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="rrtype"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="name"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="name"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="partnerUoM"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="partneruom"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="isAvailableForPurchase"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="isavailableforpurchase"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="isAddOn"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="isaddon"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="isAutoRenewable"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="isautorenewable"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="maxQTY"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="maxqty"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="minQTY"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="maxqty"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="billing"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="billing"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="supportedBillingCycle"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="supportedbillingcycle"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="lastUpdatedBy"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="lastupdatedby"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.TIMESTAMP"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="lastUpdatedAt"/>
+                                                    <constructor-arg value="java.sql.Timestamp"/>
+                                                    <constructor-arg value="lastupdatedat"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.CHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="linkingHierarchyCode"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="linkinghierarchycode"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="attributes"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="attributes"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="description"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="description"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="category"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="category"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="upgradeTargetOffers"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="upgradeTargetOffers"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="prerequisiteOffers"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="prerequisiteOffers"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="unitType"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="unitType"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.INTEGER"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="rank"/>
+                                                    <constructor-arg value="java.lang.Integer"/>
+                                                    <constructor-arg value="rank"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="product"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="product"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="salesGroupId"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="salesGroupId"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="links"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="links"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="url"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="url"/>
+                                                </bean>
+
+                                            </list>
+                                        </property>
+                                    </bean>
+                                </list>
+                            </property>
+                        </bean>
+                    </property>
+
+                    <property name="readThrough" value="true"/>
+                    <property name="writeThrough" value="true"/>
+
+                    <property name="queryEntities">
+                        <list>
+                            <bean class="org.apache.ignite.cache.QueryEntity">
+                                <property name="keyType" value="java.lang.Long"/>
+                                <property name="valueType" value="catalog.domain.partner.PartnerSKUBasicInfo"/>
+                                <property name="keyFieldName" value="id"/>
+
+                                <property name="keyFields">
+                                    <list>
+                                        <value>id</value>
+                                    </list>
+                                </property>
+
+                                <property name="fields">
+                                    <map>
+                                        <entry key="partnersku" value="java.lang.String"/>
+                                        <entry key="partnerid" value="java.lang.String"/>
+                                        <entry key="country" value="java.lang.String"/>
+                                        <entry key="locale" value="java.lang.String"/>
+                                        <entry key="rrtype" value="java.lang.String"/>
+                                        <entry key="name" value="java.lang.String"/>
+                                        <entry key="partneruom" value="java.lang.String"/>
+                                        <entry key="isavailableforpurchase" value="java.lang.String"/>
+                                        <entry key="isaddon" value="java.lang.String"/>
+                                        <entry key="isautorenewable" value="java.lang.String"/>
+                                        <entry key="maxqty" value="java.lang.String"/>
+                                        <entry key="billing" value="java.lang.String"/>
+                                        <entry key="supportedbillingcycle" value="java.lang.String"/>
+                                        <entry key="lastupdatedby" value="java.lang.String"/>
+                                        <entry key="lastupdatedat" value="java.sql.Timestamp"/>
+                                        <entry key="linkinghierarchycode" value="java.lang.String"/>
+                                        <entry key="id" value="java.lang.Long"/>
+                                        <entry key="attributes" value="java.lang.String"/>
+                                        <entry key="description" value="java.lang.String"/>
+                                        <entry key="category" value="java.lang.String"/>
+                                        <entry key="upgradeTargetOffers" value="java.lang.String"/>
+                                        <entry key="minQTY" value="java.lang.String"/>
+                                        <entry key="prerequisiteOffers" value="java.lang.String"/>
+                                        <entry key="unitType" value="java.lang.String"/>
+                                        <entry key="rank" value="java.lang.Integer"/>
+                                        <entry key="product" value="java.lang.String"/>
+                                        <entry key="salesGroupId" value="java.lang.String"/>
+                                        <entry key="links" value="java.lang.String"/>
+                                        <entry key="url" value="java.lang.String"/>
+
+                                    </map>
+                                </property>
+                            </bean>
+                        </list>
+                    </property>
+                </bean>
+
+                <!-- PartnerSKUMarketingInfo -->
+                <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                    <property name='dataRegionName' value='Default_Region'/>
+                    <property name="name" value="PartnerSKUMarketInfoCache"/>
+                    <property name="cacheMode" value="PARTITIONED"/>
+                    <property name="atomicityMode" value="TRANSACTIONAL"/>
+                    <property name="backups" value="0"/>
+                    <property name="rebalanceMode" value="SYNC"/>
+                    <property name="rebalanceBatchSize" value="#{2 * 1024 * 1024}"/>
+                    <property name="rebalanceThrottle" value="100"/>
+                    <property name="cacheStoreFactory">
+                        <bean class="org.apache.ignite.cache.store.jdbc.CacheJdbcPojoStoreFactory">
+                            <property name="dataSourceBean" value="ignitedbSource"/>
+                            <property name="dialect">
+                                <bean class="org.apache.ignite.cache.store.jdbc.dialect.MySQLDialect">
+                                </bean>
+                            </property>
+                            <property name="types">
+                                <list>
+                                    <bean class="org.apache.ignite.cache.store.jdbc.JdbcType">
+                                        <property name="cacheName" value="PartnerSKUMarketInfoCache"/>
+                                        <property name="keyType" value="java.lang.Long"/>
+                                        <property name="valueType" value="catalog.domain.partner.PartnerSKUMarketInfo"/>
+                                        <property name="databaseSchema" value="ignitedb"/>
+                                        <property name="databaseTable" value="partnerskumarketinfo"/>
+
+                                        <property name="keyFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="id"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="id"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+
+                                        <property name="valueFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="partnerId"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="partnerid"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="longDescription"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="longdescription"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="techSpec"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="techspec"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="image"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="image"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="category"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="category"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+                                    </bean>
+                                </list>
+                            </property>
+                        </bean>
+                    </property>
+
+                    <property name="readThrough" value="true"/>
+                    <property name="writeThrough" value="true"/>
+
+                    <property name="queryEntities">
+                        <list>
+                            <bean class="org.apache.ignite.cache.QueryEntity">
+                                <property name="keyType" value="java.lang.Long"/>
+                                <property name="valueType" value="catalog.domain.partner.PartnerSKUMarketInfo"/>
+                                <property name="keyFieldName" value="id"/>
+
+                                <property name="keyFields">
+                                    <list>
+                                        <value>id</value>
+                                    </list>
+                                </property>
+
+                                <property name="fields">
+                                    <map>
+                                        <entry key="partnerid" value="java.lang.String"/>
+                                        <entry key="longdescription" value="java.lang.String"/>
+                                        <entry key="techspec" value="java.lang.String"/>
+                                        <entry key="image" value="java.lang.String"/>
+                                        <entry key="category" value="java.lang.String"/>
+                                        <entry key="id" value="java.lang.Long"/>
+                                    </map>
+                                </property>
+                            </bean>
+                        </list>
+                    </property>
+                </bean>
+
+                <!-- PartnerSKUPrice -->
+                <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                    <property name='dataRegionName' value='Default_Region'/>
+                    <property name="name" value="PartnerSKUPriceCache"/>
+                    <property name="cacheMode" value="PARTITIONED"/>
+                    <property name="atomicityMode" value="TRANSACTIONAL"/>
+                    <property name="backups" value="0"/>
+                    <property name="rebalanceMode" value="SYNC"/>
+                    <property name="rebalanceBatchSize" value="#{2 * 1024 * 1024}"/>
+                    <property name="rebalanceThrottle" value="100"/>
+                    <property name="cacheStoreFactory">
+                        <bean class="org.apache.ignite.cache.store.jdbc.CacheJdbcPojoStoreFactory">
+                            <property name="dataSourceBean" value="ignitedbSource"/>
+                            <property name="dialect">
+                                <bean class="org.apache.ignite.cache.store.jdbc.dialect.MySQLDialect">
+                                </bean>
+                            </property><property name="types">
+                                <list>
+                                    <bean class="org.apache.ignite.cache.store.jdbc.JdbcType">
+                                        <property name="cacheName" value="PartnerSKUPriceCache"/>
+                                        <property name="keyType" value="java.lang.Long"/>
+                                        <property name="valueType" value="catalog.domain.partner.PartnerSKUPrice"/>
+                                        <property name="databaseSchema" value="ignitedb"/>
+                                        <property name="databaseTable" value="partnerskuprice"/>
+
+                                        <property name="keyFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="id"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="id"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+
+                                        <property name="valueFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="partnerSKUId"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="partnerskuid"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="partnerId"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="partnerid"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="country"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="country"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="versionId"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="versionid"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="priceStatus"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="pricestatus"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.DECIMAL"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="partnerPrice"/>
+                                                    <constructor-arg value="java.math.BigDecimal"/>
+                                                    <constructor-arg value="partnerprice"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.DECIMAL"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="mrsp"/>
+                                                    <constructor-arg value="java.math.BigDecimal"/>
+                                                    <constructor-arg value="mrsp"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="priceUnit"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="priceunit"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="currency"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="currency"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="lastModifyBy"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="lastmodifyby"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.TIMESTAMP"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="lastModifyAt"/>
+                                                    <constructor-arg value="java.sql.Timestamp"/>
+                                                    <constructor-arg value="lastmodifyat"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+                                    </bean>
+                                </list>
+                            </property>
+                        </bean>
+                    </property>
+
+                    <property name="readThrough" value="true"/>
+                    <property name="writeThrough" value="true"/>
+
+                    <property name="queryEntities">
+                        <list>
+                            <bean class="org.apache.ignite.cache.QueryEntity">
+                                <property name="keyType" value="java.lang.Long"/>
+                                <property name="valueType" value="catalog.domain.partner.PartnerSKUPrice"/>
+                                <property name="keyFieldName" value="id"/>
+
+                                <property name="keyFields">
+                                    <list>
+                                        <value>id</value>
+                                    </list>
+                                </property>
+
+                                <property name="fields">
+                                    <map>
+                                        <entry key="partnerskuid" value="java.lang.String"/>
+                                        <entry key="partnerid" value="java.lang.String"/>
+                                        <entry key="country" value="java.lang.String"/>
+                                        <entry key="versionid" value="java.lang.String"/>
+                                        <entry key="pricestatus" value="java.lang.String"/>
+                                        <entry key="partnerprice" value="java.math.BigDecimal"/>
+                                        <entry key="mrsp" value="java.math.BigDecimal"/>
+                                        <entry key="priceunit" value="java.lang.String"/>
+                                        <entry key="currency" value="java.lang.String"/>
+                                        <entry key="lastmodifyby" value="java.lang.String"/>
+                                        <entry key="lastmodifyat" value="java.sql.Timestamp"/>
+                                        <entry key="id" value="java.lang.Long"/>
+                                    </map>
+                                </property>
+                            </bean>
+                        </list>
+                    </property>
+                </bean>
+
+                <!-- RRModel -->
+                <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                    <property name='dataRegionName' value='Default_Region'/>
+                    <property name="name" value="RRModelCache"/>
+                    <property name="cacheMode" value="PARTITIONED"/>
+                    <property name="atomicityMode" value="TRANSACTIONAL"/>
+                    <property name="backups" value="0"/>
+                    <property name="rebalanceMode" value="SYNC"/>
+                    <property name="rebalanceBatchSize" value="#{2 * 1024 * 1024}"/>
+                    <property name="rebalanceThrottle" value="100"/>
+                    <property name="cacheStoreFactory">
+                        <bean class="org.apache.ignite.cache.store.jdbc.CacheJdbcPojoStoreFactory">
+                            <property name="dataSourceBean" value="ignitedbSource"/>
+                            <property name="dialect">
+                                <bean class="org.apache.ignite.cache.store.jdbc.dialect.MySQLDialect">
+                                </bean>
+                            </property><property name="types">
+                                <list>
+                                    <bean class="org.apache.ignite.cache.store.jdbc.JdbcType">
+                                        <property name="cacheName" value="RRModelCache"/>
+                                        <property name="keyType" value="java.lang.Long"/>
+                                        <property name="valueType" value="catalog.domain.rrModel.RRModel"/>
+                                        <property name="databaseSchema" value="ignitedb"/>
+                                        <property name="databaseTable" value="rrmodel"/>
+
+                                        <property name="keyFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="id"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="id"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+
+                                        <property name="valueFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="rrModelId"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="rrmodelid"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="rrType"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="rrtype"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="activeBU"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="activebu"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="billingCycle"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="billingcycle"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.INTEGER"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="per"/>
+                                                    <constructor-arg value="java.lang.Integer"/>
+                                                    <constructor-arg value="per"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="unitOfMeasure"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="unitofmeasure"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="priceRule"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="pricerule"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.DECIMAL"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="cost"/>
+                                                    <constructor-arg value="java.math.BigDecimal"/>
+                                                    <constructor-arg value="cost"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.DECIMAL"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="mrsp"/>
+                                                    <constructor-arg value="java.math.BigDecimal"/>
+                                                    <constructor-arg value="mrsp"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="eccDummuyPartId"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="eccdummuypartid"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="revenueDefer"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="revenuedefer"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="costDefer"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="costdefer"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="status"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="status"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="updateBy"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="updateby"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.TIMESTAMP"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="updateAt"/>
+                                                    <constructor-arg value="java.sql.Timestamp"/>
+                                                    <constructor-arg value="updateat"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+                                    </bean>
+                                </list>
+                            </property>
+                        </bean>
+                    </property>
+
+                    <property name="readThrough" value="true"/>
+                    <property name="writeThrough" value="true"/>
+
+                    <property name="queryEntities">
+                        <list>
+                            <bean class="org.apache.ignite.cache.QueryEntity">
+                                <property name="keyType" value="java.lang.Long"/>
+                                <property name="valueType" value="catalog.domain.rrModel.RRModel"/>
+                                <property name="keyFieldName" value="id"/>
+
+                                <property name="keyFields">
+                                    <list>
+                                        <value>id</value>
+                                    </list>
+                                </property>
+
+                                <property name="fields">
+                                    <map>
+                                        <entry key="rrmodelid" value="java.lang.String"/>
+                                        <entry key="rrtype" value="java.lang.String"/>
+                                        <entry key="activebu" value="java.lang.String"/>
+                                        <entry key="billingcycle" value="java.lang.String"/>
+                                        <entry key="per" value="java.lang.Integer"/>
+                                        <entry key="unitofmeasure" value="java.lang.String"/>
+                                        <entry key="pricerule" value="java.lang.String"/>
+                                        <entry key="cost" value="java.math.BigDecimal"/>
+                                        <entry key="mrsp" value="java.math.BigDecimal"/>
+                                        <entry key="eccdummuypartid" value="java.lang.String"/>
+                                        <entry key="revenuedefer" value="java.lang.String"/>
+                                        <entry key="costdefer" value="java.lang.String"/>
+                                        <entry key="status" value="java.lang.String"/>
+                                        <entry key="updateby" value="java.lang.String"/>
+                                        <entry key="updateat" value="java.sql.Timestamp"/>
+                                        <entry key="id" value="java.lang.Long"/>
+                                    </map>
+                                </property>
+                            </bean>
+                        </list>
+                    </property>
+                </bean>
+
+                <!-- LenovoSKUEvent -->
+                <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                    <property name='dataRegionName' value='Default_Region'/>
+                    <property name="name" value="LenovoSKUEventCache"/>
+                    <property name="cacheMode" value="PARTITIONED"/>
+                    <property name="atomicityMode" value="TRANSACTIONAL"/>
+                    <property name="backups" value="0"/>
+                    <property name="rebalanceMode" value="SYNC"/>
+                    <property name="rebalanceBatchSize" value="#{2 * 1024 * 1024}"/>
+                    <property name="rebalanceThrottle" value="100"/>
+                    <property name="cacheStoreFactory">
+                        <bean class="org.apache.ignite.cache.store.jdbc.CacheJdbcPojoStoreFactory">
+                            <property name="dataSourceBean" value="ignitedbSource"/>
+                            <property name="dialect">
+                                <bean class="org.apache.ignite.cache.store.jdbc.dialect.MySQLDialect">
+                                </bean>
+                            </property><property name="types">
+                                <list>
+                                    <bean class="org.apache.ignite.cache.store.jdbc.JdbcType">
+                                        <property name="cacheName" value="LenovoSKUEventCache"/>
+                                        <property name="keyType" value="java.lang.Long"/>
+                                        <property name="valueType" value="catalog.infrastructrue.event.LenovoSKUEvent"/>
+                                        <property name="databaseSchema" value="ignitedb"/>
+                                        <property name="databaseTable" value="lenovoskuevent"/>
+
+                                        <property name="keyFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="id"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="id"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+
+                                        <property name="valueFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="eventBody"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="eventbody"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="eventStatus"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="eventstatus"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="eventType"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="eventtype"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="EventTime"/>
+                                                    <constructor-arg value="java.lang.Long"/>
+                                                    <constructor-arg value="eventtime"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.INTEGER"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="eventBodyAttributeSingal"/>
+                                                    <constructor-arg value="java.lang.Integer"/>
+                                                    <constructor-arg value="eventbodyattributesingal"/>
+                                                </bean>
+
+                                            </list>
+                                        </property>
+                                    </bean>
+                                </list>
+                            </property>
+                        </bean>
+                    </property>
+
+                    <property name="readThrough" value="true"/>
+                    <property name="writeThrough" value="true"/>
+
+                    <property name="queryEntities">
+                        <list>
+                            <bean class="org.apache.ignite.cache.QueryEntity">
+                                <property name="keyType" value="java.lang.Long"/>
+                                <property name="valueType" value="catalog.infrastructrue.event.LenovoSKUEvent"/>
+                                <property name="keyFieldName" value="id"/>
+
+                                <property name="keyFields">
+                                    <list>
+                                        <value>id</value>
+                                    </list>
+                                </property>
+
+                                <property name="fields">
+                                    <map>
+                                        <entry key="eventbody" value="java.lang.String"/>
+                                        <entry key="eventstatus" value="java.lang.String"/>
+                                        <entry key="eventtype" value="java.lang.String"/>
+                                        <entry key="eventtime" value="java.lang.Long"/>
+                                        <entry key="eventbodyattributesingal" value="java.lang.Integer"/>
+                                        <entry key="id" value="java.lang.Long"/>
+                                    </map>
+                                </property>
+                            </bean>
+                        </list>
+                    </property>
+                </bean>
+
+                <!-- LenovoSKUPriceEvent -->
+                <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                    <property name='dataRegionName' value='Default_Region'/>
+                    <property name="name" value="LenovoSKUPriceEventCache"/>
+                    <property name="cacheMode" value="PARTITIONED"/>
+                    <property name="atomicityMode" value="TRANSACTIONAL"/>
+                    <property name="backups" value="0"/>
+                    <property name="rebalanceMode" value="SYNC"/>
+                    <property name="rebalanceBatchSize" value="#{2 * 1024 * 1024}"/>
+                    <property name="rebalanceThrottle" value="100"/>
+                    <property name="cacheStoreFactory">
+                        <bean class="org.apache.ignite.cache.store.jdbc.CacheJdbcPojoStoreFactory">
+                            <property name="dataSourceBean" value="ignitedbSource"/>
+                            <property name="dialect">
+                                <bean class="org.apache.ignite.cache.store.jdbc.dialect.MySQLDialect">
+                                </bean>
+                            </property><property name="types">
+                                <list>
+                                    <bean class="org.apache.ignite.cache.store.jdbc.JdbcType">
+                                        <property name="cacheName" value="LenovoSKUPriceEventCache"/>
+                                        <property name="keyType" value="java.lang.Long"/>
+                                        <property name="valueType" value="catalog.infrastructrue.event.LenovoSKUPriceEvent"/>
+                                        <property name="databaseSchema" value="ignitedb"/>
+                                        <property name="databaseTable" value="lenovoskupriceevent"/>
+
+                                        <property name="keyFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="id"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="id"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+
+                                        <property name="valueFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="eventBody"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="eventbody"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="eventStatus"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="eventstatus"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="eventType"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="eventtype"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="EventTime"/>
+                                                    <constructor-arg value="java.lang.Long"/>
+                                                    <constructor-arg value="eventtime"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.INTEGER"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="eventBodyAttributeSingal"/>
+                                                    <constructor-arg value="java.lang.Integer"/>
+                                                    <constructor-arg value="eventbodyattributesingal"/>
+                                                </bean>
+
+                                            </list>
+                                        </property>
+                                    </bean>
+                                </list>
+                            </property>
+                        </bean>
+                    </property>
+
+                    <property name="readThrough" value="true"/>
+                    <property name="writeThrough" value="true"/>
+
+                    <property name="queryEntities">
+                        <list>
+                            <bean class="org.apache.ignite.cache.QueryEntity">
+                                <property name="keyType" value="java.lang.Long"/>
+                                <property name="valueType" value="catalog.infrastructrue.event.LenovoSKUPriceEvent"/>
+                                <property name="keyFieldName" value="id"/>
+
+                                <property name="keyFields">
+                                    <list>
+                                        <value>id</value>
+                                    </list>
+                                </property>
+
+                                <property name="fields">
+                                    <map>
+                                        <entry key="eventbody" value="java.lang.String"/>
+                                        <entry key="eventstatus" value="java.lang.String"/>
+                                        <entry key="eventtype" value="java.lang.String"/>
+                                        <entry key="eventtime" value="java.lang.Long"/>
+                                        <entry key="eventbodyattributesingal" value="java.lang.Integer"/>
+                                        <entry key="id" value="java.lang.Long"/>
+                                    </map>
+                                </property>
+                            </bean>
+                        </list>
+                    </property>
+                </bean>
+
+                <!-- PartnerSKUEvent -->
+                <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                    <property name='dataRegionName' value='Default_Region'/>
+                    <property name="name" value="PartnerSKUEventCache"/>
+                    <property name="cacheMode" value="PARTITIONED"/>
+                    <property name="atomicityMode" value="TRANSACTIONAL"/>
+                    <property name="backups" value="0"/>
+                    <property name="rebalanceMode" value="SYNC"/>
+                    <property name="rebalanceBatchSize" value="#{2 * 1024 * 1024}"/>
+                    <property name="rebalanceThrottle" value="100"/>
+                    <property name="cacheStoreFactory">
+                        <bean class="org.apache.ignite.cache.store.jdbc.CacheJdbcPojoStoreFactory">
+                            <property name="dataSourceBean" value="ignitedbSource"/>
+                            <property name="dialect">
+                                <bean class="org.apache.ignite.cache.store.jdbc.dialect.MySQLDialect">
+                                </bean>
+                            </property><property name="types">
+                                <list>
+                                    <bean class="org.apache.ignite.cache.store.jdbc.JdbcType">
+                                        <property name="cacheName" value="PartnerSKUEventCache"/>
+                                        <property name="keyType" value="java.lang.Long"/>
+                                        <property name="valueType" value="catalog.infrastructrue.event.PartnerSKUEvent"/>
+                                        <property name="databaseSchema" value="ignitedb"/>
+                                        <property name="databaseTable" value="partnerskuevent"/>
+
+                                        <property name="keyFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="id"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="id"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+
+                                        <property name="valueFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="eventBody"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="eventbody"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="eventStatus"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="eventstatus"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="eventType"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="eventtype"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="EventTime"/>
+                                                    <constructor-arg value="java.lang.Long"/>
+                                                    <constructor-arg value="eventtime"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.INTEGER"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="eventBodyAttributeSingal"/>
+                                                    <constructor-arg value="java.lang.Integer"/>
+                                                    <constructor-arg value="eventbodyattributesingal"/>
+                                                </bean>
+
+                                            </list>
+                                        </property>
+                                    </bean>
+                                </list>
+                            </property>
+                        </bean>
+                    </property>
+
+                    <property name="readThrough" value="true"/>
+                    <property name="writeThrough" value="true"/>
+
+                    <property name="queryEntities">
+                        <list>
+                            <bean class="org.apache.ignite.cache.QueryEntity">
+                                <property name="keyType" value="java.lang.Long"/>
+                                <property name="valueType" value="catalog.infrastructrue.event.PartnerSKUEvent"/>
+                                <property name="keyFieldName" value="id"/>
+
+                                <property name="keyFields">
+                                    <list>
+                                        <value>id</value>
+                                    </list>
+                                </property>
+
+                                <property name="fields">
+                                    <map>
+                                        <entry key="eventbody" value="java.lang.String"/>
+                                        <entry key="eventstatus" value="java.lang.String"/>
+                                        <entry key="eventtype" value="java.lang.String"/>
+                                        <entry key="eventtime" value="java.lang.Long"/>
+                                        <entry key="eventbodyattributesingal" value="java.lang.Integer"/>
+                                        <entry key="id" value="java.lang.Long"/>
+                                    </map>
+                                </property>
+                            </bean>
+                        </list>
+                    </property>
+                </bean>
+
+                <!-- PartnerSKUPriceEvent -->
+                <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                    <property name='dataRegionName' value='Default_Region'/>
+                    <property name="name" value="PartnerSKUPriceEventCache"/>
+                    <property name="cacheMode" value="PARTITIONED"/>
+                    <property name="atomicityMode" value="TRANSACTIONAL"/>
+                    <property name="backups" value="0"/>
+                    <property name="rebalanceMode" value="SYNC"/>
+                    <property name="rebalanceBatchSize" value="#{2 * 1024 * 1024}"/>
+                    <property name="rebalanceThrottle" value="100"/>
+                    <property name="cacheStoreFactory">
+                        <bean class="org.apache.ignite.cache.store.jdbc.CacheJdbcPojoStoreFactory">
+                            <property name="dataSourceBean" value="ignitedbSource"/>
+                            <property name="dialect">
+                                <bean class="org.apache.ignite.cache.store.jdbc.dialect.MySQLDialect">
+                                </bean>
+                            </property><property name="types">
+                                <list>
+                                    <bean class="org.apache.ignite.cache.store.jdbc.JdbcType">
+                                        <property name="cacheName" value="PartnerSKUPriceEventCache"/>
+                                        <property name="keyType" value="java.lang.Long"/>
+                                        <property name="valueType" value="catalog.infrastructrue.event.PartnerSKUPriceEvent"/>
+                                        <property name="databaseSchema" value="ignitedb"/>
+                                        <property name="databaseTable" value="partnerskupriceevent"/>
+
+                                        <property name="keyFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="id"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="id"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+
+                                        <property name="valueFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="eventBody"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="eventbody"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="eventStatus"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="eventstatus"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="eventType"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="eventtype"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="EventTime"/>
+                                                    <constructor-arg value="java.lang.Long"/>
+                                                    <constructor-arg value="eventtime"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.INTEGER"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="eventBodyAttributeSingal"/>
+                                                    <constructor-arg value="java.lang.Integer"/>
+                                                    <constructor-arg value="eventbodyattributesingal"/>
+                                                </bean>
+
+                                            </list>
+                                        </property>
+                                    </bean>
+                                </list>
+                            </property>
+                        </bean>
+                    </property>
+
+                    <property name="readThrough" value="true"/>
+                    <property name="writeThrough" value="true"/>
+
+                    <property name="queryEntities">
+                        <list>
+                            <bean class="org.apache.ignite.cache.QueryEntity">
+                                <property name="keyType" value="java.lang.Long"/>
+                                <property name="valueType" value="catalog.infrastructrue.event.PartnerSKUPriceEvent"/>
+                                <property name="keyFieldName" value="id"/>
+
+                                <property name="keyFields">
+                                    <list>
+                                        <value>id</value>
+                                    </list>
+                                </property>
+
+                                <property name="fields">
+                                    <map>
+                                        <entry key="eventbody" value="java.lang.String"/>
+                                        <entry key="eventstatus" value="java.lang.String"/>
+                                        <entry key="eventtype" value="java.lang.String"/>
+                                        <entry key="eventtime" value="java.lang.Long"/>
+                                        <entry key="eventbodyattributesingal" value="java.lang.Integer"/>
+                                        <entry key="id" value="java.lang.Long"/>
+                                    </map>
+                                </property>
+                            </bean>
+                        </list>
+                    </property>
+                </bean>
+
+                <!-- RRModelEvent -->
+                <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                    <property name='dataRegionName' value='Default_Region'/>
+                    <property name="name" value="RRModelEventCache"/>
+                    <property name="cacheMode" value="PARTITIONED"/>
+                    <property name="atomicityMode" value="TRANSACTIONAL"/>
+                    <property name="backups" value="0"/>
+                    <property name="rebalanceMode" value="SYNC"/>
+                    <property name="rebalanceBatchSize" value="#{2 * 1024 * 1024}"/>
+                    <property name="rebalanceThrottle" value="100"/>
+                    <property name="cacheStoreFactory">
+                        <bean class="org.apache.ignite.cache.store.jdbc.CacheJdbcPojoStoreFactory">
+                            <property name="dataSourceBean" value="ignitedbSource"/>
+                            <property name="dialect">
+                                <bean class="org.apache.ignite.cache.store.jdbc.dialect.MySQLDialect">
+                                </bean>
+                            </property><property name="types">
+                                <list>
+                                    <bean class="org.apache.ignite.cache.store.jdbc.JdbcType">
+                                        <property name="cacheName" value="RRModelEventCache"/>
+                                        <property name="keyType" value="java.lang.Long"/>
+                                        <property name="valueType" value="catalog.infrastructrue.event.RRModelEvent"/>
+                                        <property name="databaseSchema" value="ignitedb"/>
+                                        <property name="databaseTable" value="rrmodelevent"/>
+
+                                        <property name="keyFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="id"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="id"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+
+                                        <property name="valueFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="eventBody"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="eventbody"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="eventStatus"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="eventstatus"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="eventType"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="eventtype"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="EventTime"/>
+                                                    <constructor-arg value="java.lang.Long"/>
+                                                    <constructor-arg value="eventtime"/>
+                                                </bean>
+
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.INTEGER"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="eventBodyAttributeSingal"/>
+                                                    <constructor-arg value="java.lang.Integer"/>
+                                                    <constructor-arg value="eventbodyattributesingal"/>
+                                                </bean>
+
+                                            </list>
+                                        </property>
+                                    </bean>
+                                </list>
+                            </property>
+                        </bean>
+                    </property>
+
+                    <property name="readThrough" value="true"/>
+                    <property name="writeThrough" value="true"/>
+
+                    <property name="queryEntities">
+                        <list>
+                            <bean class="org.apache.ignite.cache.QueryEntity">
+                                <property name="keyType" value="java.lang.Long"/>
+                                <property name="valueType" value="catalog.infrastructrue.event.RRModelEvent"/>
+                                <property name="keyFieldName" value="id"/>
+
+                                <property name="keyFields">
+                                    <list>
+                                        <value>id</value>
+                                    </list>
+                                </property>
+
+                                <property name="fields">
+                                    <map>
+                                        <entry key="eventbody" value="java.lang.String"/>
+                                        <entry key="eventstatus" value="java.lang.String"/>
+                                        <entry key="eventtype" value="java.lang.String"/>
+                                        <entry key="eventtime" value="java.lang.Long"/>
+                                        <entry key="eventbodyattributesingal" value="java.lang.Integer"/>
+                                        <entry key="id" value="java.lang.Long"/>
+                                    </map>
+                                </property>
+                            </bean>
+                        </list>
+                    </property>
+                </bean>
+
+              </list>
+            </property>
+
+      <property name="discoverySpi">
+        <bean class ="org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi">
+          <!-- Initial local port to listen to. -->
+          <property name="localPort" value="47539"/>
+          <!-- Changing local port range. This is an optional action. -->
+          <property name="localPortRange" value="0"/>
+
+          <property name="ipFinder">
+            <bean class="org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder">
+              <property name="addresses">
+                <list>
+                  <value>10.62.100.17:47539</value>
+                </list>
+              </property>
+            </bean>
+          </property>
+        </bean>
+      </property>
+
+      <property name="communicationSpi">
+        <bean class="org.apache.ignite.spi.communication.tcp.TcpCommunicationSpi">
+            <property name="localPort" value="48139"/>
+        </bean>
+      </property>
+    </bean>
+</beans>
